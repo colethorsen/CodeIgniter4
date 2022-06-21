@@ -37,6 +37,13 @@ class ImageMagickHandler extends BaseHandler
     protected $resource;
 
     /**
+     * Stores the commands to run on save.
+     *
+     * @var string|null
+     */
+    protected $commands;
+
+    /**
      * Constructor.
      *
      * @param Images $config
@@ -64,9 +71,6 @@ class ImageMagickHandler extends BaseHandler
      */
     public function _resize(bool $maintainRatio = false)
     {
-        $source      = ! empty($this->resource) ? $this->resource : $this->image()->getPathname();
-        $destination = $this->getResourcePath();
-
         $escape = '\\';
 
         if (PHP_OS_FAMILY === 'Windows') {
@@ -74,10 +78,10 @@ class ImageMagickHandler extends BaseHandler
         }
 
         $action = $maintainRatio === true
-            ? ' -resize ' . ($this->width ?? 0) . 'x' . ($this->height ?? 0) . ' "' . $source . '" "' . $destination . '"'
-            : ' -resize ' . ($this->width ?? 0) . 'x' . ($this->height ?? 0) . "{$escape}! \"" . $source . '" "' . $destination . '"';
+            ? ' -resize ' . ($this->width ?? 0) . 'x' . ($this->height ?? 0)
+            : ' -resize ' . ($this->width ?? 0) . 'x' . ($this->height ?? 0) . "{$escape}!";
 
-        $this->process($action);
+        $this->addCommand($action);
 
         return $this;
     }
@@ -91,17 +95,15 @@ class ImageMagickHandler extends BaseHandler
      */
     public function _crop()
     {
-        $source      = ! empty($this->resource) ? $this->resource : $this->image()->getPathname();
-        $destination = $this->getResourcePath();
-
         $extent = ' ';
+
         if ($this->xAxis >= $this->width || $this->yAxis > $this->height) {
             $extent = ' -background transparent -extent ' . ($this->width ?? 0) . 'x' . ($this->height ?? 0) . ' ';
         }
 
-        $action = ' -crop ' . ($this->width ?? 0) . 'x' . ($this->height ?? 0) . '+' . ($this->xAxis ?? 0) . '+' . ($this->yAxis ?? 0) . $extent . escapeshellarg($source) . ' ' . escapeshellarg($destination);
+        $action = ' -crop ' . ($this->width ?? 0) . 'x' . ($this->height ?? 0) . '+' . ($this->xAxis ?? 0) . '+' . ($this->yAxis ?? 0) . $extent;
 
-        $this->process($action);
+        $this->addCommand($action);
 
         return $this;
     }
@@ -118,12 +120,9 @@ class ImageMagickHandler extends BaseHandler
     {
         $angle = '-rotate ' . $angle;
 
-        $source      = ! empty($this->resource) ? $this->resource : $this->image()->getPathname();
-        $destination = $this->getResourcePath();
+        $action = ' ' . $angle;
 
-        $action = ' ' . $angle . ' ' . escapeshellarg($source) . ' ' . escapeshellarg($destination);
-
-        $this->process($action);
+        $this->addCommand($action);
 
         return $this;
     }
@@ -139,12 +138,9 @@ class ImageMagickHandler extends BaseHandler
     {
         $flatten = "-background 'rgb({$red},{$green},{$blue})' -flatten";
 
-        $source      = ! empty($this->resource) ? $this->resource : $this->image()->getPathname();
-        $destination = $this->getResourcePath();
+        $action = ' ' . $flatten;
 
-        $action = ' ' . $flatten . ' ' . escapeshellarg($source) . ' ' . escapeshellarg($destination);
-
-        $this->process($action);
+        $this->addCommand($action);
 
         return $this;
     }
@@ -160,12 +156,9 @@ class ImageMagickHandler extends BaseHandler
     {
         $angle = $direction === 'horizontal' ? '-flop' : '-flip';
 
-        $source      = ! empty($this->resource) ? $this->resource : $this->image()->getPathname();
-        $destination = $this->getResourcePath();
+        $action = ' ' . $angle;
 
-        $action = ' ' . $angle . ' ' . escapeshellarg($source) . ' ' . escapeshellarg($destination);
-
-        $this->process($action);
+        $this->addCommand($action);
 
         return $this;
     }
@@ -181,6 +174,14 @@ class ImageMagickHandler extends BaseHandler
         preg_match('/(ImageMagick\s[\S]+)/', $result[0], $matches);
 
         return str_replace('ImageMagick ', '', $matches[0]);
+    }
+
+    /**
+     * Handles adding commands to the list of commands
+     */
+    protected function addCommand(string $command)
+    {
+        $this->commands .= $command;
     }
 
     /**
@@ -206,7 +207,7 @@ class ImageMagickHandler extends BaseHandler
         }
 
         $cmd = $this->config->libraryPath;
-        $cmd .= $action === '-version' ? ' ' . $action : ' -quality ' . $quality . ' ' . $action;
+        $cmd .= $action === '-version' || $quality == 100 ? ' ' . $action : ' -quality ' . $quality . ' ' . $action;
 
         $retval = 1;
         $output = [];
@@ -254,7 +255,7 @@ class ImageMagickHandler extends BaseHandler
 
         // Copy the file through ImageMagick so that it has
         // a chance to convert file format.
-        $action = escapeshellarg($this->resource) . ' ' . escapeshellarg($target);
+        $action = $this->commands . ' ' . escapeshellarg($this->resource) . ' ' . escapeshellarg($target);
 
         $this->process($action, $quality);
 
