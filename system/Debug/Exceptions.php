@@ -128,7 +128,7 @@ class Exceptions
 
         $this->request = Services::request();
 
-        if ($this->config->log === true && ! in_array($statusCode, $this->config->ignoreCodes, true)) {
+        if ($this->config->log === true && ! in_array($statusCode, $this->config->ignoreCodes, true) && ! in_array(get_class($exception), $this->config->ignoreExceptions, true)) {
             $uri       = $this->request->getPath() === '' ? '/' : $this->request->getPath();
             $routeInfo = '[Method: ' . $this->request->getMethod() . ', Route: ' . $uri . ']';
 

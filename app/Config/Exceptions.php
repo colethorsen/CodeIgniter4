@@ -37,6 +37,18 @@ class Exceptions extends BaseConfig
 
     /**
      * --------------------------------------------------------------------------
+     * DO NOT LOG EXCEPTIONS
+     * --------------------------------------------------------------------------
+     * Any exceptions here will NOT be logged if logging is turned on.
+     *
+     * @var list<string>
+     */
+    public array $ignoreExceptions = [
+        //\CodeIgniter\HTTP\Exceptions\BadRequestException::class,
+    ];
+
+    /**
+     * --------------------------------------------------------------------------
      * Error Views Path
      * --------------------------------------------------------------------------
      * This is the path to the directory that contains the 'cli' and 'html'
